@@ -4,10 +4,11 @@ Usage:
     python build_dataset.py path/to/sfw/train-*.parquet
 
 Keeps illustrations that are tagged as scenery and contain no people, drops any
-row carrying a tag on the blocklist, and adds the derived `atmosphere` column.
+row carrying a tag on the blocklist, and adds the derived `atmosphere` column and anonymized artist ids.
 """
 import collections
 import csv
+import hashlib
 import sys
 
 import pyarrow.parquet as pq
@@ -39,8 +40,13 @@ BLOCK_SUBSTRINGS = ("breast", "nipple", "nude", "naked", "panties", "panty", "un
                     "eroge", "ecchi", "porn", "raped")
 
 
-# Artist handles are free-form usernames that cannot be screened, and they are not a usable feature.
+# Artist handles are free-form usernames that cannot be screened, and they are not a usable feature. The hash keeps
+# what a train/test split needs, which is knowing that two posts share an artist, without printing the handle.
 DROP_COLUMNS = {"artist"}
+
+
+def artist_ids(value):
+    return ", ".join(hashlib.sha256(a.encode()).hexdigest()[:10] for a in sorted(split_tags(value)) if a)
 
 
 def blocked(tags):
@@ -70,7 +76,7 @@ def main(paths):
                 if writer is None:
                     writer = csv.writer(f)
                     names = [n for n in table.column_names if n not in DROP_COLUMNS]
-                    writer.writerow(names + ["atmosphere"])
+                    writer.writerow(names + ["artist_ids", "atmosphere"])
                 for row in table.to_pylist():
                     tags = split_tags(row["general"])
                     if not tags & SCENE_BASE or "no humans" not in tags:
@@ -81,7 +87,7 @@ def main(paths):
                         continue
                     label = atmosphere_of(tags)
                     labels[label or "(unlabeled)"] += 1
-                    writer.writerow(["" if row[n] is None else row[n] for n in names] + [label])
+                    writer.writerow(["" if row[n] is None else row[n] for n in names] + [artist_ids(row["artist"]), label])
                     kept += 1
     print("rows written", kept, "rows dropped by blocklist", dropped)
     for name, count in labels.most_common():

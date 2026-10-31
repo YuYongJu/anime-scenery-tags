@@ -7,7 +7,7 @@ The file holds text tags and numeric metadata only. It contains no images.
 
 ## File
 
-`anime_scenery_tags.csv`: 19,652 rows, 31 columns, one row per illustration.
+`anime_scenery_tags.csv`: 19,652 rows, 32 columns, one row per illustration.
 
 ## Source
 
@@ -21,8 +21,9 @@ A row is kept when:
 2. its tags include `no humans`, and
 3. none of its general, character, copyright or meta tags is on the content blocklist in `build_dataset.py`.
 
-Step 3 removed 151 rows. The source `artist` column is left out because artist handles are free-form
-usernames that cannot be screened. `build_dataset.py` reproduces the file from the source parquet files.
+Step 3 removed 151 rows. The source `artist` column is replaced by `artist_ids`, truncated SHA-256 hashes,
+because artist handles are free-form usernames that cannot be screened while train/test splits still need to know
+which posts share an artist. `build_dataset.py` reproduces the file from the source parquet files.
 
 ## Columns
 
@@ -45,6 +46,7 @@ usernames that cannot be screened. `build_dataset.py` reproduces the file from t
 | character | string | Comma-separated character tags |
 | copyright | string | Comma-separated series or franchise tags |
 | meta | string | Comma-separated tags about the file itself |
+| artist_ids | string | Comma-separated hashes identifying the artist(s), blank if none. For grouping, not a feature |
 | atmosphere | string | Derived target, blank when no single class applies |
 
 ## Target: `atmosphere`
